@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}{{ perfume.name }} | Perfume World{% endblock %}
+
+{% block content %}
+<section class="detail-page">
+    <div class="container">
+
+        <div class="breadcrumb">
+            <a href="{{ url_for('home') }}">Home</a>
+            <span>/</span>
+            <span>{{ perfume.name }}</span>
+        </div>
+
+        <div class="detail-card">
+            <div class="detail-image-wrap">
+                {% if perfume.image_url %}
+                    <img src="{{ perfume.image_url }}" alt="{{ perfume.name }}" class="detail-image">
+                {% else %}
+                    <div class="detail-no-image">No Image Available</div>
+                {% endif %}
+            </div>
+
+            <div class="detail-info">
+                <div class="detail-top-row">
+                    <h1 class="detail-title">{{ perfume.name }}</h1>
+
+                    {% set qty = perfume.stock_qty or 0 %}
+                    {% if qty <= 0 %}
+                        <span class="stock-badge stock-out">Out of Stock</span>
+                    {% elif qty <= 5 %}
+                        <span class="stock-badge stock-low">Low Stock ({{ qty }})</span>
+                    {% else %}
+                        <span class="stock-badge stock-in">In Stock ({{ qty }})</span>
+                    {% endif %}
+                </div>
+
+                <div class="detail-meta">
+                    {% if perfume.brand_obj %}
+                        <p><strong>Brand:</strong> {{ perfume.brand_obj.name }}</p>
+                    {% else %}
+                        <p><strong>Brand:</strong> N/A</p>
+                    {% endif %}
+
+                    <p><strong>Gender:</strong> {{ perfume.gender_target or "Unisex" }}</p>
+                    <p><strong>Category:</strong> {{ perfume.category or "General" }}</p>
+                </div>
+
+                <div class="detail-price">
+                    ৳ {{ "%.0f"|format(perfume.price or 0) }}
+                </div>
+
+                <div class="detail-section">
+                    <h3>Description</h3>
+                    <p>{{ perfume.description or "No description available." }}</p>
+                </div>
+
+                <div class="notes-section">
+                    <h3>Fragrance Notes</h3>
+
+                    <div class="notes-grid">
+                        <div class="note-box">
+                            <h4>Top Notes</h4>
+                            <p>{{ perfume.top_notes or "N/A" }}</p>
+                        </div>
+
+                        <div class="note-box">
+                            <h4>Middle Notes</h4>
+                            <p>{{ perfume.middle_notes or "N/A" }}</p>
+                        </div>
+
+                        <div class="note-box">
+                            <h4>Base Notes</h4>
+                            <p>{{ perfume.base_notes or "N/A" }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-actions">
+                    <a href="{{ url_for('home') }}" class="btn-secondary">← Back to Catalog</a>
+                    <button type="button" class="btn-primary" disabled>Add to Cart (Next Step)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="related-block">
+            <div class="related-header">
+                <h2>Related Perfumes</h2>
+            </div>
+
+            {% if related_perfumes %}
+                <div class="catalog-grid">
+                    {% for rp in related_perfumes %}
+                        <div class="perfume-card">
+                            <div class="perfume-image-wrap">
+                                {% if rp.image_url %}
+                                    <img src="{{ rp.image_url }}" alt="{{ rp.name }}">
+                                {% else %}
+                                    <div class="perfume-no-image">No Image</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="perfume-content">
+                                <p class="perfume-brand">
+                                    {% if rp.brand_obj %}
+                                        {{ rp.brand_obj.name }}
+                                    {% else %}
+                                        Perfume World
+                                    {% endif %}
+                                </p>
+
+                                <h3 class="perfume-name">{{ rp.name }}</h3>
+
+                                <div class="perfume-tags">
+                                    <span class="tag-chip gender">{{ rp.gender_target or "Unisex" }}</span>
+                                    <span class="tag-chip">{{ rp.category or "General" }}</span>
+                                </div>
+
+                                <div class="perfume-bottom">
+                                    <div class="perfume-price">৳ {{ "%.0f"|format(rp.price or 0) }}</div>
+                                    <div class="perfume-stock-text">Stock: {{ rp.stock_qty or 0 }}</div>
+                                </div>
+
+                                <div class="perfume-actions">
+                                    <a href="{{ url_for('perfume_detail', perfume_id=rp.id) }}" class="btn-card">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-box">
+                    No related perfumes found.
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+</section>
+{% endblock %}
