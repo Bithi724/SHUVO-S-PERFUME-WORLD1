@@ -2,22 +2,8 @@
 
 {% block content %}
 <section class="hero">
-    <h1>Find Your Signature Scent</h1>
-    <p>Explore premium perfumes and discover your perfect fragrance.</p>
-    <a class="btn" href="{{ url_for('main.catalog') }}">Browse Catalog</a>
+    <h1>Welcome to Perfume World ✅</h1>
+    <p>Your perfume project UI is working.</p>
+    <a class="btn" href="{{ url_for('main.catalog') }}">Go to Catalog</a>
 </section>
-
-<h2>Featured Perfumes</h2>
-<div class="card-grid">
-    {% for perfume in perfumes %}
-    <div class="card">
-        <img src="{{ perfume.image_url }}" alt="{{ perfume.name }}">
-        <h3>{{ perfume.name }}</h3>
-        <p>{{ perfume.brand_obj.name }}</p>
-        <p>${{ perfume.price }}</p>
-    </div>
-    {% else %}
-    <p>No perfumes yet. Visit <a href="{{ url_for('main.seed_data') }}">/seed</a> first.</p>
-    {% endfor %}
-</div>
 {% endblock %}

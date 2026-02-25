@@ -1,23 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Perfume Catalog</h1>
-<p>Browse all perfumes</p>
-
-<div class="card-grid">
-    {% for perfume in perfumes %}
-    <div class="card">
-        <img src="{{ perfume.image_url }}" alt="{{ perfume.name }}">
-        <h3>{{ perfume.name }}</h3>
-        <p><strong>Brand:</strong> {{ perfume.brand_obj.name }}</p>
-        <p><strong>Gender:</strong> {{ perfume.gender }}</p>
-        <p><strong>Price:</strong> ${{ perfume.price }}</p>
-        <p><strong>Top Notes:</strong> {{ perfume.top_notes }}</p>
-        <p><strong>Middle Notes:</strong> {{ perfume.middle_notes }}</p>
-        <p><strong>Base Notes:</strong> {{ perfume.base_notes }}</p>
-    </div>
-    {% else %}
-    <p>No perfumes in database yet. Visit <a href="{{ url_for('main.seed_data') }}">/seed</a>.</p>
-    {% endfor %}
-</div>
+<h1>Catalog Page ✅</h1>
+<p>Next step: database + real perfume data</p>
 {% endblock %}

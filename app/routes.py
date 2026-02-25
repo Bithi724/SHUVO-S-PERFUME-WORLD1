@@ -1,11 +1,11 @@
-from flask import Blueprint
+from flask import Blueprint, render_template
 
 main = Blueprint("main", __name__)
 
 @main.route("/")
 def home():
-    return "<h1>Home route working ✅</h1>"
+    return render_template("home.html")
 
 @main.route("/catalog")
 def catalog():
-    return "<h1>Catalog route working ✅</h1>"
+    return render_template("catalog.html")
