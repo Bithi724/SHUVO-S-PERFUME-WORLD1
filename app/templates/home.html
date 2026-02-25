@@ -1,9 +1,135 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perfume World</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <h1>Perfume World</h1>
+      <p class="subtitle">Browse perfumes by gender, category, and stock availability</p>
+    </div>
+  </header>
 
-{% block content %}
-<section class="hero">
-    <h1>Welcome to Perfume World ✅</h1>
-    <p>Your perfume project UI is working.</p>
-    <a class="btn" href="{{ url_for('main.catalog') }}">Go to Catalog</a>
-</section>
-{% endblock %}
+  <main class="container">
+    <form class="filters" method="GET" action="{{ url_for('home') }}">
+      <div class="filter-group">
+        <label for="gender">Gender</label>
+        <select name="gender" id="gender">
+          <option value="" {% if not selected_gender %}selected{% endif %}>All</option>
+          <option value="male" {% if selected_gender == "male" %}selected{% endif %}>Male</option>
+          <option value="female" {% if selected_gender == "female" %}selected{% endif %}>Female</option>
+          <option value="unisex" {% if selected_gender == "unisex" %}selected{% endif %}>Unisex</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="category">Category</label>
+        <select name="category" id="category">
+          <option value="" {% if not selected_category %}selected{% endif %}>All</option>
+          {% for c in categories %}
+            <option value="{{ c }}" {% if selected_category == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="stock">Stock</label>
+        <select name="stock" id="stock">
+          <option value="" {% if not selected_stock %}selected{% endif %}>All</option>
+          <option value="in" {% if selected_stock == "in" %}selected{% endif %}>In Stock Only</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="sort">Sort</label>
+        <select name="sort" id="sort">
+          <option value="" {% if not selected_sort %}selected{% endif %}>Default</option>
+          <option value="name_asc" {% if selected_sort == "name_asc" %}selected{% endif %}>Name (A-Z)</option>
+          <option value="price_asc" {% if selected_sort == "price_asc" %}selected{% endif %}>Price (Low to High)</option>
+          <option value="price_desc" {% if selected_sort == "price_desc" %}selected{% endif %}>Price (High to Low)</option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn">Apply</button>
+        <a href="{{ url_for('home') }}" class="btn btn-secondary">Reset</a>
+      </div>
+    </form>
+
+    <section class="results-bar">
+      <h2>Catalog</h2>
+      <p>{{ perfumes|length }} item(s) found</p>
+    </section>
+
+    {% if perfumes %}
+      <section class="grid">
+        {% for p in perfumes %}
+          <article class="card">
+            <div class="image-wrap">
+              {% if p.image_url %}
+                <img src="{{ p.image_url }}" alt="{{ p.name }}">
+              {% else %}
+                <div class="no-image">No Image</div>
+              {% endif %}
+            </div>
+
+            <div class="card-body">
+              <h3>{{ p.name }}</h3>
+
+              <div class="meta">
+                {% if p.gender_target %}
+                  <span class="tag">{{ p.gender_target|title }}</span>
+                {% endif %}
+                {% if p.category %}
+                  <span class="tag tag-outline">{{ p.category }}</span>
+                {% endif %}
+              </div>
+
+              <p class="price">
+                {% if p.price is not none %}
+                  ৳ {{ '%.2f'|format(p.price) }}
+                {% else %}
+                  Price: N/A
+                {% endif %}
+              </p>
+
+              {% set qty = p.stock_qty if p.stock_qty is defined else None %}
+              {% if qty is not none %}
+                {% if qty > 0 %}
+                  <p class="stock in-stock">In Stock ({{ qty }})</p>
+                {% else %}
+                  <p class="stock out-stock">Out of Stock</p>
+                {% endif %}
+              {% else %}
+                <p class="stock unknown-stock">Stock: N/A</p>
+              {% endif %}
+
+              {% if p.top_notes %}
+                <p class="notes"><strong>Top:</strong> {{ p.top_notes }}</p>
+              {% endif %}
+              {% if p.middle_notes %}
+                <p class="notes"><strong>Middle:</strong> {{ p.middle_notes }}</p>
+              {% endif %}
+              {% if p.base_notes %}
+                <p class="notes"><strong>Base:</strong> {{ p.base_notes }}</p>
+              {% endif %}
+
+              {% if p.description %}
+                <p class="desc">{{ p.description }}</p>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+    {% else %}
+      <div class="empty-state">
+        <p>No perfumes found. Try changing filters or seed data again.</p>
+      </div>
+    {% endif %}
+  </main>
+</body>
+</html>

@@ -1,6 +1,44 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Catalog Page ✅</h1>
-<p>Next step: database + real perfume data</p>
+<h1>Perfume Catalog</h1>
+<p class="muted">Filter by target category and check stock status.</p>
+
+<div class="filters">
+    <a class="filter-btn {% if selected_gender == 'All' %}active{% endif %}"
+       href="{{ url_for('main.catalog') }}">All</a>
+
+    <a class="filter-btn {% if selected_gender == 'Men' %}active{% endif %}"
+       href="{{ url_for('main.catalog') }}?gender=Men">Men</a>
+
+    <a class="filter-btn {% if selected_gender == 'Women' %}active{% endif %}"
+       href="{{ url_for('main.catalog') }}?gender=Women">Women</a>
+
+    <a class="filter-btn {% if selected_gender == 'Unisex' %}active{% endif %}"
+       href="{{ url_for('main.catalog') }}?gender=Unisex">Unisex</a>
+</div>
+
+<div class="card-grid">
+    {% for perfume in perfumes %}
+    <div class="card">
+        <img src="{{ perfume.image_url }}" alt="{{ perfume.name }}">
+        <div class="card-body">
+            <h3>{{ perfume.name }}</h3>
+            <p class="muted"><strong>Brand:</strong> {{ perfume.brand_obj.name }}</p>
+            <p class="muted"><strong>For:</strong> {{ perfume.gender_target }}</p>
+            <p class="muted"><strong>Category:</strong> {{ perfume.category }}</p>
+            <p class="price">${{ "%.2f"|format(perfume.price) }}</p>
+            <span class="stock-badge {{ perfume.stock_class }}">{{ perfume.stock_label }}</span>
+
+            <hr class="divider">
+
+            <p class="notes"><strong>Top:</strong> {{ perfume.top_notes }}</p>
+            <p class="notes"><strong>Middle:</strong> {{ perfume.middle_notes }}</p>
+            <p class="notes"><strong>Base:</strong> {{ perfume.base_notes }}</p>
+        </div>
+    </div>
+    {% else %}
+    <p>No perfumes found. Try <a href="{{ url_for('main.seed_data') }}">/seed</a>.</p>
+    {% endfor %}
+</div>
 {% endblock %}
