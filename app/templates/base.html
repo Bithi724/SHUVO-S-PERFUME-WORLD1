@@ -7,6 +7,19 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <nav class="topnav">
+  <a href="{{ url_for('home') }}">Catalog</a>
+  {% if session.get('is_admin') %}
+    <a href="{{ url_for('admin_perfumes') }}">Admin Panel</a>
+    <a href="{{ url_for('admin_logout') }}">Logout</a>
+  {% else %}
+    <a href="{{ url_for('admin_login') }}">Admin Login</a>
+  {% endif %}
+</nav>
+    <nav class="topnav">
+  <a href="{{ url_for('home') }}">Catalog</a>
+  <a href="{{ url_for('admin_perfumes') }}">Admin</a>
+</nav>
     <div class="site-shell">
         {% block content %}{% endblock %}
     </div>

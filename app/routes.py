@@ -1,6 +1,20 @@
-from flask import render_template, request, redirect, url_for
+from functools import wraps
+from flask import render_template, request, redirect, url_for, session
 from app import app, db
 from app.models import Perfume, Brand
+
+# ✅ Change these (your admin credentials)
+ADMIN_USER = "admin"
+ADMIN_PASS = "admin123"
+
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("is_admin"):
+            return redirect(url_for("admin_login", next=request.path))
+        return fn(*args, **kwargs)
+    return wrapper
 
 
 # =========================
@@ -24,31 +38,24 @@ def home():
     per_page = 6
 
     q = Perfume.query
-
-    # active filter (safe)
     if hasattr(Perfume, "is_active"):
         q = q.filter(Perfume.is_active.is_(True))
 
-    # search (name)
     if selected_search:
         q = q.filter(Perfume.name.ilike(f"%{selected_search}%"))
 
-    # brand filter (brand id)
     if selected_brand != "All":
         try:
             q = q.filter(Perfume.brand_id == int(selected_brand))
         except ValueError:
             pass
 
-    # gender filter
     if selected_gender != "All":
         q = q.filter(Perfume.gender_target == selected_gender)
 
-    # category filter
     if selected_category != "All":
         q = q.filter(Perfume.category == selected_category)
 
-    # stock filter
     if selected_stock == "In Stock":
         q = q.filter(Perfume.stock_qty > 0)
     elif selected_stock == "Low Stock":
@@ -56,7 +63,6 @@ def home():
     elif selected_stock == "Out of Stock":
         q = q.filter(Perfume.stock_qty <= 0)
 
-    # sorting
     if selected_sort == "Name A Z":
         q = q.order_by(Perfume.name.asc())
     elif selected_sort == "Name Z A":
@@ -71,7 +77,6 @@ def home():
     total_found = q.count()
     total_pages = (total_found + per_page - 1) // per_page if total_found else 1
     page = min(page, total_pages)
-
     perfumes = q.offset((page - 1) * per_page).limit(per_page).all()
 
     brands = Brand.query.order_by(Brand.name.asc()).all()
@@ -80,20 +85,11 @@ def home():
 
     return render_template(
         "home.html",
-        perfumes=perfumes,
-        brands=brands,
-        genders=genders,
-        categories=categories,
-        selected_search=selected_search,
-        selected_brand=selected_brand,
-        selected_gender=selected_gender,
-        selected_category=selected_category,
-        selected_stock=selected_stock,
-        selected_sort=selected_sort,
-        total_found=total_found,
-        page=page,
-        total_pages=total_pages,
-        per_page=per_page,
+        perfumes=perfumes, brands=brands, genders=genders, categories=categories,
+        selected_search=selected_search, selected_brand=selected_brand,
+        selected_gender=selected_gender, selected_category=selected_category,
+        selected_stock=selected_stock, selected_sort=selected_sort,
+        total_found=total_found, page=page, total_pages=total_pages, per_page=per_page,
     )
 
 
@@ -105,7 +101,6 @@ def perfume_detail(perfume_id):
     q = Perfume.query
     if hasattr(Perfume, "is_active"):
         q = q.filter(Perfume.is_active.is_(True))
-
     perfume = q.filter(Perfume.id == perfume_id).first_or_404()
 
     related_q = Perfume.query.filter(Perfume.id != perfume.id)
@@ -113,33 +108,48 @@ def perfume_detail(perfume_id):
         related_q = related_q.filter(Perfume.is_active.is_(True))
     if perfume.category:
         related_q = related_q.filter(Perfume.category == perfume.category)
-
     related_perfumes = related_q.order_by(Perfume.id.desc()).limit(4).all()
 
     return render_template("perfume_detail.html", perfume=perfume, related_perfumes=related_perfumes)
 
 
 # =========================
-# ADMIN: SHORTCUT
+# ADMIN: LOGIN / LOGOUT
 # =========================
-@app.route("/admin", methods=["GET"])
-def admin_home():
-    return redirect(url_for("admin_perfumes"))
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    err = ""
+    next_url = request.args.get("next") or url_for("admin_perfumes")
+
+    if request.method == "POST":
+        u = (request.form.get("username") or "").strip()
+        p = (request.form.get("password") or "").strip()
+        if u == ADMIN_USER and p == ADMIN_PASS:
+            session["is_admin"] = True
+            return redirect(next_url)
+        err = "Wrong username/password."
+
+    return render_template("admin_login.html", error_msg=err, next_url=next_url)
+
+
+@app.route("/admin/logout", methods=["GET"])
+def admin_logout():
+    session.pop("is_admin", None)
+    return redirect(url_for("home"))
 
 
 # =========================
-# ADMIN: LIST (EDIT/DELETE here)
+# ADMIN: LIST / ADD / EDIT / DELETE
 # =========================
 @app.route("/admin/perfumes", methods=["GET"])
+@admin_required
 def admin_perfumes():
     perfumes = Perfume.query.order_by(Perfume.id.desc()).all()
     return render_template("admin_perfumes.html", perfumes=perfumes)
 
 
-# =========================
-# ADMIN: ADD (NEW)
-# =========================
 @app.route("/admin/perfumes/new", methods=["GET", "POST"])
+@admin_required
 def admin_add_perfume():
     error_msg = ""
     brands = Brand.query.order_by(Brand.name.asc()).all()
@@ -161,7 +171,6 @@ def admin_add_perfume():
 
         brand_id_raw = (request.form.get("brand_id") or "").strip()
         new_brand_name = (request.form.get("new_brand_name") or "").strip()
-
         is_active_checked = ("is_active" in request.form)
 
         if not name:
@@ -198,19 +207,12 @@ def admin_add_perfume():
 
         if not error_msg:
             perfume = Perfume(
-                name=name,
-                price=price,
-                stock_qty=stock_qty,
-                gender_target=gender_target,
-                category=category,
-                top_notes=top_notes,
-                middle_notes=middle_notes,
-                base_notes=base_notes,
-                description=description,
-                image_url=image_url,
-                brand_id=brand_obj.id,
+                name=name, price=price, stock_qty=stock_qty,
+                gender_target=gender_target, category=category,
+                top_notes=top_notes, middle_notes=middle_notes, base_notes=base_notes,
+                description=description, image_url=image_url,
+                brand_id=brand_obj.id
             )
-            # is_active only if exists in model
             if hasattr(perfume, "is_active"):
                 perfume.is_active = is_active_checked
 
@@ -221,10 +223,8 @@ def admin_add_perfume():
     return render_template("admin_add_perfume.html", brands=brands, error_msg=error_msg)
 
 
-# =========================
-# ADMIN: EDIT
-# =========================
 @app.route("/admin/perfumes/<int:perfume_id>/edit", methods=["GET", "POST"])
+@admin_required
 def admin_edit_perfume(perfume_id):
     perfume = db.session.get(Perfume, perfume_id)
     if not perfume:
@@ -246,7 +246,6 @@ def admin_edit_perfume(perfume_id):
             perfume.base_notes = (request.form.get("base_notes") or "").strip()
             perfume.description = (request.form.get("description") or "").strip()
             perfume.image_url = (request.form.get("image_url") or "").strip()
-
             if hasattr(perfume, "is_active"):
                 perfume.is_active = ("is_active" in request.form)
 
@@ -274,10 +273,8 @@ def admin_edit_perfume(perfume_id):
     return render_template("admin_edit_perfume.html", perfume=perfume, brands=brands, error_msg=error_msg)
 
 
-# =========================
-# ADMIN: DELETE
-# =========================
 @app.route("/admin/perfumes/<int:perfume_id>/delete", methods=["POST"])
+@admin_required
 def admin_delete_perfume(perfume_id):
     perfume = db.session.get(Perfume, perfume_id)
     if not perfume:
