@@ -1,13 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Perfume World{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}Perfume World{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <nav class="topnav">
+
+<nav class="topnav">
   <a href="{{ url_for('home') }}">Catalog</a>
   {% if session.get('is_admin') %}
     <a href="{{ url_for('admin_perfumes') }}">Admin Panel</a>
@@ -16,12 +17,8 @@
     <a href="{{ url_for('admin_login') }}">Admin Login</a>
   {% endif %}
 </nav>
-    <nav class="topnav">
-  <a href="{{ url_for('home') }}">Catalog</a>
-  <a href="{{ url_for('admin_perfumes') }}">Admin</a>
-</nav>
-    <div class="site-shell">
-        {% block content %}{% endblock %}
-    </div>
+
+{% block content %}{% endblock %}
+
 </body>
 </html>

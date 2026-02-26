@@ -1,12 +1,13 @@
+import os
 from functools import wraps
 from flask import render_template, request, redirect, url_for, session
 from app import app, db
 from app.models import Perfume, Brand
 
 # ✅ Change these (your admin credentials)
-ADMIN_USER = "admin"
-ADMIN_PASS = "admin123"
-
+import os
+ADMIN_USER = os.environ.get("PERFUME_ADMIN_USER", "admin")
+ADMIN_PASS = os.environ.get("PERFUME_ADMIN_PASS", "admin123")
 
 def admin_required(fn):
     @wraps(fn)

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Admin Login{% endblock %}
+{% block content %}
+<div class="container page-content">
+  <div class="admin-form-card">
+    <h2 style="margin-top:0;">Admin Login</h2>
+    {% if error_msg %}<div class="form-alert">{{ error_msg }}</div>{% endif %}
+    <form method="POST" action="{{ url_for('admin_login', next=next_url) }}">
+      <div class="field field-full">
+        <label>Username</label>
+        <input class="search-input" name="username" required>
+      </div>
+      <div class="field field-full">
+        <label>Password</label>
+        <input class="search-input" type="password" name="password" required>
+      </div>
+      <div class="field field-full form-actions">
+        <button class="btn btn-primary" type="submit">Login</button>
+        <a class="btn btn-secondary" href="{{ url_for('home') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
