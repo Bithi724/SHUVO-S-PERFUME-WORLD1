@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Admin | Perfumes{% endblock %}
+{% block content %}
+<div class="container page-content">
+  <div class="admin-head-row">
+    <h2>Admin: Manage Perfumes</h2>
+    <a class="btn btn-secondary" href="{{ url_for('home') }}">← Back</a>
+  </div>
+
+  <div class="admin-table">
+    <div class="admin-row admin-row-head">
+      <div>ID</div><div>Name</div><div>Brand</div><div>Stock</div><div>Active</div><div>Actions</div>
+    </div>
+
+    {% for p in perfumes %}
+    <div class="admin-row">
+      <div>{{ p.id }}</div>
+      <div><strong>{{ p.name }}</strong></div>
+      <div>{{ p.brand_obj.name if p.brand_obj else "N/A" }}</div>
+      <div>{{ p.stock_qty }}</div>
+      <div>{{ "Yes" if p.is_active else "No" }}</div>
+      <div class="admin-actions">
+        <a class="btn-card" href="{{ url_for('admin_edit_perfume', perfume_id=p.id) }}">Edit</a>
+        <form method="POST" action="{{ url_for('admin_delete_perfume', perfume_id=p.id) }}"
+              onsubmit="return confirm('Delete this perfume?');">
+          <button class="btn-card danger" type="submit">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

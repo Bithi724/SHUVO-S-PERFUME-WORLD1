@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Admin | Edit Perfume{% endblock %}
+{% block content %}
+<div class="container page-content">
+  <div class="admin-head-row">
+    <h2>Edit: {{ perfume.name }}</h2>
+    <a class="btn btn-secondary" href="{{ url_for('admin_perfumes') }}">← Back</a>
+  </div>
+
+  {% if error_msg %}
+    <div class="form-alert">{{ error_msg }}</div>
+  {% endif %}
+
+  <div class="admin-form-card">
+    <form method="POST">
+      <div class="admin-form-grid">
+        <div class="field field-full">
+          <label>Name *</label>
+          <input class="search-input" name="name" value="{{ perfume.name }}" required>
+        </div>
+
+        <div class="field">
+          <label>Brand</label>
+          <select name="brand_id">
+            {% for b in brands %}
+              <option value="{{ b.id }}" {% if perfume.brand_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Gender</label>
+          {% set g = perfume.gender_target or "Unisex" %}
+          <select name="gender_target">
+            <option value="Male" {% if g=="Male" %}selected{% endif %}>Male</option>
+            <option value="Female" {% if g=="Female" %}selected{% endif %}>Female</option>
+            <option value="Unisex" {% if g=="Unisex" %}selected{% endif %}>Unisex</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Category</label>
+          <input class="search-input" name="category" value="{{ perfume.category or 'General' }}">
+        </div>
+
+        <div class="field">
+          <label>Price</label>
+          <input class="search-input" name="price" value="{{ perfume.price }}">
+        </div>
+
+        <div class="field">
+          <label>Stock</label>
+          <input class="search-input" name="stock_qty" value="{{ perfume.stock_qty }}">
+        </div>
+
+        <div class="field field-full">
+          <label>Image URL</label>
+          <input class="search-input" name="image_url" value="{{ perfume.image_url or '' }}">
+        </div>
+
+        <div class="field">
+          <label>Top Notes</label>
+          <input class="search-input" name="top_notes" value="{{ perfume.top_notes or '' }}">
+        </div>
+        <div class="field">
+          <label>Middle Notes</label>
+          <input class="search-input" name="middle_notes" value="{{ perfume.middle_notes or '' }}">
+        </div>
+        <div class="field">
+          <label>Base Notes</label>
+          <input class="search-input" name="base_notes" value="{{ perfume.base_notes or '' }}">
+        </div>
+
+        <div class="field field-full">
+          <label>Description</label>
+          <textarea class="admin-textarea" name="description" rows="5">{{ perfume.description or '' }}</textarea>
+        </div>
+
+        <div class="field field-full inline-check">
+          <label class="check-wrap">
+            <input type="checkbox" name="is_active" {% if perfume.is_active %}checked{% endif %}>
+            <span>Active (show in catalog)</span>
+          </label>
+        </div>
+
+        <div class="field field-full form-actions">
+          <button class="btn btn-primary" type="submit">Save</button>
+          <a class="btn btn-secondary" href="{{ url_for('admin_perfumes') }}">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
