@@ -1,26 +1,109 @@
-import os
 from functools import wraps
 from flask import render_template, request, redirect, url_for, session
 from app import app, db
-from app.models import Perfume, Brand
+from app.models import Perfume, Brand, User
 
-# ✅ Change these (your admin credentials)
-import os
-ADMIN_USER = os.environ.get("PERFUME_ADMIN_USER", "admin")
-ADMIN_PASS = os.environ.get("PERFUME_ADMIN_PASS", "admin123")
 
-def admin_required(fn):
+def _safe_next(u: str) -> str:
+    if u and u.startswith("/") and "://" not in u:
+        return u
+    return url_for("home")
+
+
+def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        if not session.get("is_admin"):
-            return redirect(url_for("admin_login", next=request.path))
+        if not session.get("user_id"):
+            return redirect(url_for("login", next=request.path))
         return fn(*args, **kwargs)
     return wrapper
 
 
-# =========================
-# PUBLIC: HOME / CATALOG
-# =========================
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login", next=request.path))
+        if not session.get("is_admin"):
+            return "Forbidden (Admin only)", 403
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+# -------------------------
+# AUTH (User + Admin same login)
+# -------------------------
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if session.get("user_id"):
+        return redirect(url_for("home"))
+
+    err = ""
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        email = (request.form.get("email") or "").strip()
+        password = (request.form.get("password") or "").strip()
+        confirm = (request.form.get("confirm") or "").strip()
+
+        if not username or not password:
+            err = "Username এবং Password লাগবে।"
+        elif password != confirm:
+            err = "Password match করছে না।"
+        elif User.query.filter_by(username=username).first():
+            err = "এই username আগে থেকেই আছে।"
+        elif email and User.query.filter_by(email=email).first():
+            err = "এই email আগে থেকেই আছে।"
+        else:
+            u = User(username=username, email=email if email else None, is_admin=False)
+            u.set_password(password)
+            db.session.add(u)
+            db.session.commit()
+            return redirect(url_for("login"))
+
+    return render_template("signup.html", error_msg=err)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("user_id"):
+        return redirect(url_for("home"))
+
+    err = ""
+    next_url = _safe_next(request.args.get("next") or "")
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = (request.form.get("password") or "").strip()
+        next_url = _safe_next(request.form.get("next") or "")
+
+        u = User.query.filter_by(username=username).first()
+        if u and u.check_password(password):
+            session["user_id"] = u.id
+            session["username"] = u.username
+            session["is_admin"] = bool(u.is_admin)
+            return redirect(next_url or url_for("home"))
+
+        err = "Wrong username/password."
+
+    return render_template("login.html", error_msg=err, next_url=next_url)
+
+
+@app.route("/logout")
+def logout():
+    session.pop("user_id", None)
+    session.pop("username", None)
+    session.pop("is_admin", None)
+    return redirect(url_for("home"))
+
+
+@app.route("/admin")
+def admin_shortcut():
+    return redirect(url_for("admin_perfumes"))
+
+
+# -------------------------
+# PUBLIC: Catalog + Detail
+# -------------------------
 @app.route("/", methods=["GET"])
 @app.route("/catalog", methods=["GET"])
 def home():
@@ -38,9 +121,7 @@ def home():
     page = max(page, 1)
     per_page = 6
 
-    q = Perfume.query
-    if hasattr(Perfume, "is_active"):
-        q = q.filter(Perfume.is_active.is_(True))
+    q = Perfume.query.filter(Perfume.is_active.is_(True))
 
     if selected_search:
         q = q.filter(Perfume.name.ilike(f"%{selected_search}%"))
@@ -90,59 +171,25 @@ def home():
         selected_search=selected_search, selected_brand=selected_brand,
         selected_gender=selected_gender, selected_category=selected_category,
         selected_stock=selected_stock, selected_sort=selected_sort,
-        total_found=total_found, page=page, total_pages=total_pages, per_page=per_page,
+        total_found=total_found, page=page, total_pages=total_pages, per_page=per_page
     )
 
 
-# =========================
-# PUBLIC: DETAIL
-# =========================
-@app.route("/perfume/<int:perfume_id>", methods=["GET"])
+@app.route("/perfume/<int:perfume_id>")
 def perfume_detail(perfume_id):
-    q = Perfume.query
-    if hasattr(Perfume, "is_active"):
-        q = q.filter(Perfume.is_active.is_(True))
-    perfume = q.filter(Perfume.id == perfume_id).first_or_404()
-
-    related_q = Perfume.query.filter(Perfume.id != perfume.id)
-    if hasattr(Perfume, "is_active"):
-        related_q = related_q.filter(Perfume.is_active.is_(True))
-    if perfume.category:
-        related_q = related_q.filter(Perfume.category == perfume.category)
-    related_perfumes = related_q.order_by(Perfume.id.desc()).limit(4).all()
-
-    return render_template("perfume_detail.html", perfume=perfume, related_perfumes=related_perfumes)
+    perfume = Perfume.query.filter_by(id=perfume_id, is_active=True).first_or_404()
+    related = Perfume.query.filter(
+        Perfume.id != perfume.id,
+        Perfume.is_active.is_(True),
+        Perfume.category == perfume.category
+    ).order_by(Perfume.id.desc()).limit(4).all()
+    return render_template("perfume_detail.html", perfume=perfume, related_perfumes=related)
 
 
-# =========================
-# ADMIN: LOGIN / LOGOUT
-# =========================
-@app.route("/admin/login", methods=["GET", "POST"])
-def admin_login():
-    err = ""
-    next_url = request.args.get("next") or url_for("admin_perfumes")
-
-    if request.method == "POST":
-        u = (request.form.get("username") or "").strip()
-        p = (request.form.get("password") or "").strip()
-        if u == ADMIN_USER and p == ADMIN_PASS:
-            session["is_admin"] = True
-            return redirect(next_url)
-        err = "Wrong username/password."
-
-    return render_template("admin_login.html", error_msg=err, next_url=next_url)
-
-
-@app.route("/admin/logout", methods=["GET"])
-def admin_logout():
-    session.pop("is_admin", None)
-    return redirect(url_for("home"))
-
-
-# =========================
-# ADMIN: LIST / ADD / EDIT / DELETE
-# =========================
-@app.route("/admin/perfumes", methods=["GET"])
+# -------------------------
+# ADMIN: Manage (Admin only)
+# -------------------------
+@app.route("/admin/perfumes")
 @admin_required
 def admin_perfumes():
     perfumes = Perfume.query.order_by(Perfume.id.desc()).all()
@@ -159,23 +206,20 @@ def admin_add_perfume():
         name = (request.form.get("name") or "").strip()
         price_raw = (request.form.get("price") or "0").strip()
         stock_raw = (request.form.get("stock_qty") or "0").strip()
-
         gender_target = (request.form.get("gender_target") or "Unisex").strip()
         category = (request.form.get("category") or "General").strip()
-
         top_notes = (request.form.get("top_notes") or "").strip()
         middle_notes = (request.form.get("middle_notes") or "").strip()
         base_notes = (request.form.get("base_notes") or "").strip()
-
         description = (request.form.get("description") or "").strip()
         image_url = (request.form.get("image_url") or "").strip()
+        is_active = ("is_active" in request.form)
 
         brand_id_raw = (request.form.get("brand_id") or "").strip()
         new_brand_name = (request.form.get("new_brand_name") or "").strip()
-        is_active_checked = ("is_active" in request.form)
 
         if not name:
-            error_msg = "Perfume name is required."
+            error_msg = "Perfume name required."
 
         try:
             price = float(price_raw)
@@ -186,7 +230,7 @@ def admin_add_perfume():
         try:
             stock_qty = int(stock_raw)
         except ValueError:
-            error_msg = "Stock qty must be an integer."
+            error_msg = "Stock must be an integer."
             stock_qty = 0
 
         brand_obj = None
@@ -204,20 +248,17 @@ def admin_add_perfume():
                     brand_obj = None
 
             if not brand_obj:
-                error_msg = "Select a brand or add a new brand."
+                error_msg = "Select brand or add new brand."
 
         if not error_msg:
-            perfume = Perfume(
+            p = Perfume(
                 name=name, price=price, stock_qty=stock_qty,
                 gender_target=gender_target, category=category,
                 top_notes=top_notes, middle_notes=middle_notes, base_notes=base_notes,
                 description=description, image_url=image_url,
-                brand_id=brand_obj.id
+                is_active=is_active, brand_id=brand_obj.id
             )
-            if hasattr(perfume, "is_active"):
-                perfume.is_active = is_active_checked
-
-            db.session.add(perfume)
+            db.session.add(p)
             db.session.commit()
             return redirect(url_for("admin_perfumes"))
 
@@ -229,43 +270,38 @@ def admin_add_perfume():
 def admin_edit_perfume(perfume_id):
     perfume = db.session.get(Perfume, perfume_id)
     if not perfume:
-        return "Perfume not found", 404
+        return "Not found", 404
 
     brands = Brand.query.order_by(Brand.name.asc()).all()
     error_msg = ""
 
     if request.method == "POST":
-        name = (request.form.get("name") or "").strip()
-        if not name:
-            error_msg = "Name is required."
-        else:
-            perfume.name = name
-            perfume.gender_target = (request.form.get("gender_target") or "Unisex").strip()
-            perfume.category = (request.form.get("category") or "General").strip()
-            perfume.top_notes = (request.form.get("top_notes") or "").strip()
-            perfume.middle_notes = (request.form.get("middle_notes") or "").strip()
-            perfume.base_notes = (request.form.get("base_notes") or "").strip()
-            perfume.description = (request.form.get("description") or "").strip()
-            perfume.image_url = (request.form.get("image_url") or "").strip()
-            if hasattr(perfume, "is_active"):
-                perfume.is_active = ("is_active" in request.form)
+        perfume.name = (request.form.get("name") or "").strip()
+        perfume.gender_target = (request.form.get("gender_target") or "Unisex").strip()
+        perfume.category = (request.form.get("category") or "General").strip()
+        perfume.top_notes = (request.form.get("top_notes") or "").strip()
+        perfume.middle_notes = (request.form.get("middle_notes") or "").strip()
+        perfume.base_notes = (request.form.get("base_notes") or "").strip()
+        perfume.description = (request.form.get("description") or "").strip()
+        perfume.image_url = (request.form.get("image_url") or "").strip()
+        perfume.is_active = ("is_active" in request.form)
 
+        try:
+            perfume.price = float((request.form.get("price") or "0").strip())
+        except ValueError:
+            error_msg = "Price must be a number."
+
+        try:
+            perfume.stock_qty = int((request.form.get("stock_qty") or "0").strip())
+        except ValueError:
+            error_msg = "Stock must be an integer."
+
+        bid = (request.form.get("brand_id") or "").strip()
+        if bid:
             try:
-                perfume.price = float((request.form.get("price") or "0").strip())
+                perfume.brand_id = int(bid)
             except ValueError:
-                error_msg = "Price must be a number."
-
-            try:
-                perfume.stock_qty = int((request.form.get("stock_qty") or "0").strip())
-            except ValueError:
-                error_msg = "Stock must be an integer."
-
-            bid = (request.form.get("brand_id") or "").strip()
-            if bid:
-                try:
-                    perfume.brand_id = int(bid)
-                except ValueError:
-                    pass
+                pass
 
         if not error_msg:
             db.session.commit()
@@ -279,7 +315,7 @@ def admin_edit_perfume(perfume_id):
 def admin_delete_perfume(perfume_id):
     perfume = db.session.get(Perfume, perfume_id)
     if not perfume:
-        return "Perfume not found", 404
+        return "Not found", 404
     db.session.delete(perfume)
     db.session.commit()
     return redirect(url_for("admin_perfumes"))
